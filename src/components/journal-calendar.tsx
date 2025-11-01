@@ -6,6 +6,9 @@ import type { JournalEntry } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
+import { DayPicker, DayProps, useDayRender } from 'react-day-picker';
+import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
 
 interface JournalCalendarProps {
   entries: JournalEntry[];
@@ -13,30 +16,49 @@ interface JournalCalendarProps {
   onDateSelect: (date: Date | undefined) => void;
 }
 
-export function JournalCalendar({ entries, selectedDate, onDateSelect }: JournalCalendarProps) {
-  const entryMap = new Map(entries.map((entry) => [entry.date, entry]));
+function CustomDay(props: DayProps & { entries: JournalEntry[] }) {
+  const { buttonRef, activeModifiers, ...dayRender } = useDayRender(
+    props.date,
+    props.displayMonth,
+    props.buttonProps
+  );
 
-  const modifiers = {
-    happy: (date: Date) => {
-      const entry = entryMap.get(format(date, 'yyyy-MM-dd'));
-      return entry?.mood === 'happy';
-    },
-    neutral: (date: Date) => {
-      const entry = entryMap.get(format(date, 'yyyy-MM-dd'));
-      return entry?.mood === 'neutral';
-    },
-    sad: (date: Date) => {
-      const entry = entryMap.get(format(date, 'yyyy-MM-dd'));
-      return entry?.mood === 'sad';
-    },
-  };
-
-  const modifiersStyles = {
+  const entryMap = new Map((props.entries || []).map((entry: JournalEntry) => [format(new Date(entry.date), 'yyyy-MM-dd'), entry]));
+  const entry = entryMap.get(format(props.date, 'yyyy-MM-dd'));
+  const moodStyles = {
     happy: { color: 'hsl(var(--primary))' },
     neutral: { color: 'hsl(var(--accent))' },
     sad: { color: 'hsl(var(--muted-foreground))' },
   };
-  
+
+  if (dayRender.isHidden) {
+    return <></>;
+  }
+
+  return (
+    <div
+      className={cn("relative", dayRender.className)}
+      style={dayRender.style}
+    >
+      <Button
+        ref={buttonRef}
+        {...dayRender.buttonProps}
+        variant="ghost"
+        className={cn("h-9 w-9 p-0 font-normal", {
+          'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground': activeModifiers.selected,
+          'bg-accent text-accent-foreground': activeModifiers.today,
+          'text-muted-foreground opacity-50': activeModifiers.outside,
+        })}
+      >
+        {dayRender.formattedDate}
+      </Button>
+      {entry && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: moodStyles[entry.mood].color }} />}
+    </div>
+  );
+}
+
+
+export function JournalCalendar({ entries, selectedDate, onDateSelect }: JournalCalendarProps) {
   const selectedEntry = entries.find(e => e.date === format(selectedDate, 'yyyy-MM-dd'));
   const selectedMoodDetails = selectedEntry ? getMoodDetails(selectedEntry.mood) : null;
 
@@ -50,19 +72,8 @@ export function JournalCalendar({ entries, selectedDate, onDateSelect }: Journal
             selected={selectedDate}
             onSelect={onDateSelect}
             className="rounded-md"
-            modifiers={modifiers}
-            modifiersStyles={modifiersStyles}
             components={{
-                Day: ({ date, ...props }) => {
-                    const dayFormatted = format(date, 'yyyy-MM-dd');
-                    const entry = entryMap.get(dayFormatted);
-                    return (
-                        <div className="relative">
-                            <props.children />
-                            {entry && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: modifiersStyles[entry.mood].color }} />}
-                        </div>
-                    );
-                },
+                Day: (props: DayProps) => <CustomDay {...props} entries={entries} />
             }}
           />
         </CardContent>
