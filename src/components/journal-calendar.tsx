@@ -50,7 +50,7 @@ function CustomDay(props: DayProps & { entries: JournalEntry[] }) {
           'text-muted-foreground opacity-50': activeModifiers.outside,
         })}
       >
-        {dayRender.formattedDate}
+        {props.date.getDate()}
       </Button>
       {entry && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: moodStyles[entry.mood].color }} />}
     </div>
